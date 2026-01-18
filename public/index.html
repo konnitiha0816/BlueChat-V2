@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueChat V2</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend+Exa:wght@700&display=swap');
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; transition: background 2s; color: white; }
+        .day-bg { background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%); } /* 朝・昼の美しい風景をイメージ */
+        .night-bg { background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%); } /* 星空のイメージ */
+        .hidden { display: none !important; }
+        
+        /* タイトル画面 */
+        .v-tag { position: absolute; top: 20px; right: 20px; font-size: 14px; opacity: 0.7; }
+        .title-text { font-family: 'Lexend Exa', sans-serif; font-size: 80px; text-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .btn-start { padding: 15px 50px; font-size: 22px; border-radius: 40px; border: none; background: white; color: #1976d2; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        
+        /* 共通パネル */
+        .panel { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(15px); padding: 40px; border-radius: 25px; text-align: center; width: 350px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 10px; border: none; }
+        
+        /* 通話画面 (Google Meet風) */
+        #screen-call { width: 100vw; height: 100vh; background: #202124; display: flex; flex-direction: column; }
+        .call-header { height: 50px; padding: 0 20px; display: flex; align-items: center; background: #000; font-weight: bold; }
+        .video-container { flex: 1; display: flex; position: relative; background: #3c4043; }
+        #main-video { width: 100%; height: 100%; object-fit: cover; }
+        .info-overlay { position: absolute; bottom: 100px; left: 20px; font-size: 14px; text-shadow: 1px 1px 2px black; }
+        .control-bar { height: 80px; display: flex; justify-content: center; align-items: center; gap: 15px; }
+        .icon-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #3c4043; color: white; cursor: pointer; font-size: 20px; }
+        .icon-btn.red { background: #ea4335; }
+        
+        /* チャットサイドバー */
+        .sidebar { position: fixed; right: 0; top: 0; width: 300px; height: 100%; background: white; color: black; transition: 0.3s; transform: translateX(300px); }
+        .sidebar.open { transform: translateX(0); }
+    </style>
+</head>
+<body class="day-bg">
+    <div id="v-tag" class="v-tag">V2</div>
+
+    <div id="screen-title" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+        <div class="title-text">Blue Chat</div>
+        <button class="btn-start" onclick="startCaptcha()">スタート</button>
+    </div>
+
+    <div id="screen-captcha" class="hidden" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <div class="panel">
+            <h3>🤖 ロボットではありませんか？</h3>
+            <p id="captcha-q" style="font-size: 24px; font-weight: bold;"></p>
+            <input type="number" id="captcha-a" placeholder="答えを入力">
+            <button class="btn-start" style="font-size: 16px; margin-top:10px;" onclick="checkCaptcha()">確認</button>
+        </div>
+    </div>
+
+    <div id="screen-login" class="hidden" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <div class="panel">
+            <button style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; cursor:pointer; background:white;">Googleでログイン</button>
+            <button style="width:100%; padding:10px; margin-bottom:20px; border-radius:5px; border:none; cursor:pointer; background:#0078d4; color:white;">Microsoftでログイン</button>
+            <hr>
+            <input type="text" id="login-id" placeholder="BlueChat ID">
+            <input type="password" id="login-pw" placeholder="パスワード">
+            <button class="btn-start" style="width:100%; font-size:16px;" onclick="doLogin()">ログイン</button>
+            <p><a href="#" onclick="showScreen('screen-register-1')" style="color:white; font-size:12px;">ブルーチャットアカウントを作成</a></p>
+        </div>
+    </div>
+
+    <div id="screen-register-1" class="hidden" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <div class="panel">
+            <h3>アカウント作成 (1/2)</h3>
+            <input type="text" id="reg-id" placeholder="ID (英数.-のみ)">
+            <input type="password" id="reg-pw" placeholder="パスワード (英数6文字以上)">
+            <button class="btn-start" style="width:100%; font-size:16px;" onclick="checkReg1()">次へ</button>
+        </div>
+    </div>
+
+    <div id="screen-register-2" class="hidden" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <div class="panel">
+            <h3>アカウント作成 (2/2)</h3>
+            <input type="text" id="reg-nick" placeholder="ニックネーム">
+            <p style="font-size: 10px; color: #ffcccc;">※本名を使用しないでください</p>
+            <button class="btn-start" style="width:100%; font-size:16px;" onclick="doRegister()">アカウント作成</button>
+        </div>
+    </div>
+
+    <div id="screen-call" class="hidden">
+        <div class="call-header">Blue Chat</div>
+        <div class="video-container">
+            <video id="main-video" autoplay playsinline muted></video>
+            <div class="info-overlay">
+                <span id="display-time">00:00</span> | <span id="display-room-id">ID: ------</span>
+            </div>
+        </div>
+        <div class="control-bar">
+            <button class="icon-btn">🎤</button>
+            <button class="icon-btn">📷</button>
+            <button class="icon-btn">📤</button>
+            <button class="icon-btn">✋</button>
+            <button class="icon-btn" onclick="toggleChat()">💬</button>
+            <button class="icon-btn" id="btn-admin">⚙️</button>
+            <button class="icon-btn">👥</button>
+            <button class="icon-btn red">📞</button>
+        </div>
+        <div id="sidebar-chat" class="sidebar">
+            <div style="padding: 20px;">
+                <h4>チャット</h4>
+                <div id="chat-box" style="height: 400px; overflow-y: auto; border: 1px solid #ddd;"></div>
+                <input type="text" id="chat-input" placeholder="メッセージを入力 (@でメンション)" style="width:80%; color:black;">
+                <button onclick="sendChat()">送信</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
